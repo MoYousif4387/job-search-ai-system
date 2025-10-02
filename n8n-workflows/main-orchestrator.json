@@ -1,0 +1,123 @@
+{
+  "name": "Main Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5678/webhook/job-scout",
+        "options": {}
+      },
+      "id": "trigger-job-scout",
+      "name": "Trigger Job Scout",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [450, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Main Orchestrator - Coordinates all workflows\nconst jobs = items[0].json;\n\nif (!jobs || jobs.length === 0) {\n  return [{ json: { message: 'No jobs found' } }];\n}\n\n// Process each job\nconst processedJobs = jobs.map(job => {\n  return {\n    job_id: job.id || Math.random().toString(36),\n    title: job.title,\n    company: job.company,\n    match_score: job.match_score,\n    status: 'pending_review',\n    created_at: new Date().toISOString()\n  };\n});\n\nreturn processedJobs.map(job => ({ json: job }));"
+      },
+      "id": "process-jobs",
+      "name": "Process Job Results",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.match_score }}",
+              "operation": "larger",
+              "value2": 70
+            }
+          ]
+        }
+      },
+      "id": "high-match-filter",
+      "name": "High Match Filter",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5678/webhook/resume-optimizer",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "trigger-resume-optimizer",
+      "name": "Trigger Resume Optimizer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [850, 400]
+    }
+  ],
+  "connections": {
+    "Every 6 Hours": {
+      "main": [
+        [
+          {
+            "node": "Trigger Job Scout",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Job Scout": {
+      "main": [
+        [
+          {
+            "node": "Process Job Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Job Results": {
+      "main": [
+        [
+          {
+            "node": "High Match Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "High Match Filter": {
+      "main": [
+        [
+          {
+            "node": "Trigger Resume Optimizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}
