@@ -373,7 +373,7 @@ async def search_jobs(request: JobSearchRequest):
                 "location": request.location,
                 "job_type": request.job_type
             },
-            "data_source": f"Database - {len(jobspy_df)} JobSpy + {len(github_df)} SimplifyJobs + {len(zapply_df)} Zapply = {len(jobspy_df) + len(github_df) + len(zapply_df)} total jobs",
+            "data_source": f"Database - {len(jobspy_df)} JobSpy + {len(github_df)} SimplifyJobs + {len(zapply_df)} Zapply + {len(zapply_swe_df)} Zapply SWE = {len(jobspy_df) + len(github_df) + len(zapply_df) + len(zapply_swe_df)} total jobs",
             "source_breakdown": source_counts,
             "last_updated": last_updated
         }
