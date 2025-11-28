@@ -1,0 +1,63 @@
+{
+  "name": "Resume Optimizer",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Resume Optimizer - Tailors resume to job description\nconst jobData = items[0].json;\nconst { job_description, current_resume } = jobData;\n\n// Extract key requirements from job description\nconst extractKeywords = (text) => {\n  const techKeywords = ['python', 'javascript', 'react', 'node.js', 'sql', 'aws', 'docker'];\n  const found = [];\n  \n  for (const keyword of techKeywords) {\n    if (text.toLowerCase().includes(keyword)) {\n      found.push(keyword);\n    }\n  }\n  \n  return found;\n};\n\nconst requiredSkills = extractKeywords(job_description);\n\n// Generate optimized resume sections\nconst optimizedResume = {\n  summary: `Experienced professional with expertise in ${requiredSkills.join(', ')}`,\n  skills: requiredSkills,\n  experience_highlights: [\n    `Developed applications using ${requiredSkills[0] || 'modern technologies'}`,\n    `Led projects involving ${requiredSkills[1] || 'software development'}`,\n    `Collaborated on ${requiredSkills[2] || 'technical'} initiatives`\n  ],\n  match_percentage: Math.min(95, requiredSkills.length * 15 + 25)\n};\n\nreturn [{ json: optimizedResume }];"
+      },
+      "id": "optimize-resume",
+      "name": "Optimize Resume",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/generate-resume",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "call-crewai",
+      "name": "Call CrewAI Service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [650, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Optimize Resume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Optimize Resume": {
+      "main": [
+        [
+          {
+            "node": "Call CrewAI Service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}
