@@ -323,35 +323,61 @@ async def search_jobs(request: JobSearchRequest):
                 posted_ago = "Recently posted"
                 days_ago = None
 
+            # Safely convert all fields to JSON-serializable types (no NaN/inf)
+            def safe_str(val, default="Not specified"):
+                """Convert value to string, handling NaN"""
+                if pd.isna(val) or val is None:
+                    return default
+                return str(val)
+
+            def safe_int(val, default=None):
+                """Convert value to int, handling NaN"""
+                if pd.isna(val) or val is None or val == '':
+                    return default
+                try:
+                    return int(float(val))
+                except (ValueError, TypeError):
+                    return default
+
             job_dict = {
-                "title": job['title'],
-                "company": job['company'] if pd.notna(job['company']) else "Company Name Not Listed",
-                "location": job['location'],
-                "description": job['description'][:500] + "..." if pd.notna(job['description']) and len(str(job['description'])) > 500 else str(job['description']),
-                "url": job['job_url'],  # REAL clickable URL!
-                "posted_date": str(job['date_posted']) if pd.notna(job['date_posted']) else "Recently",
-                "job_type": str(job['job_type']) if pd.notna(job['job_type']) else "Not specified",
-                "source": job['site'],  # Indeed, LinkedIn, GitHub, or Zapply
-                "relevance_score": 85,  # Could calculate this properly later
-                "days_ago": days_ago,
+                "title": safe_str(job['title'], "Untitled Position"),
+                "company": safe_str(job['company'], "Company Name Not Listed"),
+                "location": safe_str(job['location'], "Location Not Specified"),
+                "description": job['description'][:500] + "..." if pd.notna(job['description']) and len(str(job['description'])) > 500 else safe_str(job['description'], "No description available"),
+                "url": safe_str(job['job_url'], "#"),
+                "posted_date": safe_str(job['date_posted'], "Recently"),
+                "job_type": safe_str(job['job_type'], "Not specified"),
+                "source": safe_str(job['site'], "unknown"),
+                "relevance_score": 85,
+                "days_ago": safe_int(days_ago),
                 "posted_ago": posted_ago if posted_ago else "Recently posted"
             }
 
             # Add GitHub-specific metadata if available
             if job['site'] == 'github':
-                job_dict['is_faang'] = bool(job.get('is_faang', False))
-                job_dict['requires_citizenship'] = bool(job.get('requires_citizenship', False))
-                job_dict['requires_sponsorship'] = bool(job.get('requires_sponsorship', True))
-                job_dict['is_closed'] = bool(job.get('is_closed', False))
+                def safe_bool(val, default=False):
+                    if pd.isna(val) or val is None:
+                        return default
+                    return bool(val)
+
+                job_dict['is_faang'] = safe_bool(job.get('is_faang'), False)
+                job_dict['requires_citizenship'] = safe_bool(job.get('requires_citizenship'), False)
+                job_dict['requires_sponsorship'] = safe_bool(job.get('requires_sponsorship'), True)
+                job_dict['is_closed'] = safe_bool(job.get('is_closed'), False)
 
             # Add Zapply-specific metadata if available (freshness tracking)
             if job['site'] == 'zapply':
-                job_dict['freshness_score'] = int(job.get('freshness_score', 0)) if pd.notna(job.get('freshness_score')) else 0
-                job_dict['is_fresh'] = bool(job.get('is_fresh', False))
-                job_dict['is_faang'] = bool(job.get('is_faang', False))
-                job_dict['is_tier1'] = bool(job.get('is_tier1', False))
-                job_dict['level'] = str(job.get('level', 'Not specified'))
-                job_dict['category'] = str(job.get('category', 'Not specified'))
+                def safe_bool(val, default=False):
+                    if pd.isna(val) or val is None:
+                        return default
+                    return bool(val)
+
+                job_dict['freshness_score'] = safe_int(job.get('freshness_score'), 0)
+                job_dict['is_fresh'] = safe_bool(job.get('is_fresh'), False)
+                job_dict['is_faang'] = safe_bool(job.get('is_faang'), False)
+                job_dict['is_tier1'] = safe_bool(job.get('is_tier1'), False)
+                job_dict['level'] = safe_str(job.get('level'), 'Not specified')
+                job_dict['category'] = safe_str(job.get('category'), 'Not specified')
 
             jobs_list.append(job_dict)
             job_counter += 1
